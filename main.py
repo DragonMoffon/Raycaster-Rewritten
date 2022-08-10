@@ -49,7 +49,7 @@ def refresh_colors():
 
 
 class Player:
-    speed = 0.2
+    speed = 0.4
     angular_speed = speed*pi
 
     def __init__(self, x, y, dir_x, dir_y, plane_x, plane_y):
@@ -58,17 +58,42 @@ class Player:
         self.dir = (dir_x, dir_y)
         self.plane = (plane_x, plane_y)
 
-    def handle_input(self, symbol):
-        if symbol == arcade.key.A or symbol == arcade.key.LEFT:
-            self.rotate(-self.angular_speed)
+        self.turn_dir = 0
+        self.move = 0
+
+    def handle_input_press(self, symbol):
+        if symbol == arcade.key.W or symbol == arcade.key.UP:
+            self.move += 1
+        elif symbol == arcade.key.S or symbol == arcade.key.DOWN:
+            self.move += -1
+        elif symbol == arcade.key.A or symbol == arcade.key.LEFT:
+            self.turn_dir += -1
         elif symbol == arcade.key.D or symbol == arcade.key.RIGHT:
-            self.rotate(self.angular_speed)
+            self.turn_dir += 1
+
+    def handle_input_release(self, symbol):
+        if symbol == arcade.key.W or symbol == arcade.key.UP:
+            self.move += -1
+        elif symbol == arcade.key.S or symbol == arcade.key.DOWN:
+            self.move += 1
+        elif symbol == arcade.key.A or symbol == arcade.key.LEFT:
+            self.turn_dir += 1
+        elif symbol == arcade.key.D or symbol == arcade.key.RIGHT:
+            self.turn_dir += -1
+
+    def update(self, delta_time):
+        self.move_forward(delta_time)
+        self.rotate(self.angular_speed*self.turn_dir*delta_time)
 
     def rotate(self, rad):
         _x, _y = self.dir
         self.dir = _x*cos(rad)-_y*sin(rad), _x*sin(rad)+_y*cos(rad)
         _x, _y = self.plane
         self.plane = _x*cos(rad)-_y*sin(rad), _x*sin(rad)+_y*cos(rad)
+
+    def move_forward(self, delta_time):
+        self.x = self.x + (self.move * self.dir[0] * self.speed * delta_time)
+        self.y = self.y + (self.move * self.dir[1] * self.speed * delta_time)
 
     def draw(self):
         s_x, s_y = self.x * TILE_SIZE, (MAP_Y-self.y) * TILE_SIZE
@@ -102,6 +127,7 @@ class App(arcade.Window):
         # Strips for render on right
         self.strips = arcade.SpriteList()
         for x in range(CAST_SCREEN_WIDTH):
+            # we create a one pixel wide sprite for each x pixel column. we can then set the height based on the dist.
             tile = arcade.SpriteSolidColor(1, 5, arcade.color.WHITE)
             tile.center_y = CAST_SCREEN_HEIGHT // 2 + 0.5
             tile.center_x = CAST_SCREEN_WIDTH + x + 0.5
@@ -110,7 +136,10 @@ class App(arcade.Window):
         self.player = Player(5, 5, -1, 0, 0, -0.66)
 
     def on_key_press(self, symbol: int, modifiers: int):
-        self.player.handle_input(symbol)
+        self.player.handle_input_press(symbol)
+
+    def on_key_release(self, symbol: int, modifiers: int):
+        self.player.handle_input_release(symbol)
 
     def cast_rays(self):
         for x in range(0, CAST_SCREEN_WIDTH):
@@ -173,6 +202,7 @@ class App(arcade.Window):
     def on_update(self, delta_time):
         print(1/delta_time)
         refresh_colors()
+        self.player.update(delta_time)
         self.cast_rays()
 
     def on_draw(self):
